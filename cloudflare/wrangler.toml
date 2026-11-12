@@ -1,0 +1,8 @@
+name = "little-mandarin-worker"
+main = "worker/index.ts"
+compatibility_date = "2026-03-01"
+
+[d1_databases]
+binding = "DB"
+database_name = "k6cd"
+database_id = "24262a82-cc33-4b55-b1af-b54717b26e65"
