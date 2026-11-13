@@ -118,7 +118,7 @@ class MandarinHandler(http.server.SimpleHTTPRequestHandler):
                                 "word_combinations": json.dumps([], ensure_ascii=False),
                                 "example_sentences": json.dumps(examples, ensure_ascii=False),
                                 "source_id": "moedict_api",
-                                "source_url": f"https://www.moedict.tw/#/{urllib.parse.quote(title)}",
+                                "source_url": f"https://www.moedict.tw/{urllib.parse.quote(title)}",
                                 "source_license": "CC-BY-NC-SA 3.0 / 萌典公開 API",
                                 "verification_status": "VERIFIED",
                                 "created_at": "2026-11-12"

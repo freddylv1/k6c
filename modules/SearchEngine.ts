@@ -93,7 +93,7 @@ export class SearchEngine {
       },
       {
         siteName: '萌典線上辭典',
-        url: `https://www.moedict.tw/#/${encoded}`,
+        url: `https://www.moedict.tw/${encoded}`,
         category: 'dictionary',
         description: '整合重編本、簡編本與兩岸辭典的線上查詢工具。'
       },

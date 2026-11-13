@@ -54,7 +54,7 @@ export class PublicDictionaryService {
             exampleSentences,
             difficultyLevel: title.length > 3 ? 'L3' : 'L1',
             sourceId: 'moedict_api',
-            sourceUrl: `https://www.moedict.tw/#/${encodeURIComponent(title)}`,
+            sourceUrl: `https://www.moedict.tw/${encodeURIComponent(title)}`,
             sourceLicense: 'CC-BY-NC-SA 3.0 / 萌典公開 API',
             verificationStatus: 'VERIFIED',
             contentHash: generateContentHash(title + defs),
