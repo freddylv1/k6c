@@ -87,7 +87,7 @@ export class SearchEngine {
       },
       {
         siteName: '教育部成語典',
-        url: `https://dict.idioms.moe.edu.tw/idiomsearch.jsp?word=${encoded}`,
+        url: `https://dict.idioms.moe.edu.tw/idiomList.jsp?idiom=${encoded}`,
         category: 'official',
         description: '查詢成語由來、出處及用法。'
       },
