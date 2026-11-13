@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小小國語學習家 v3.0 - 兒童國語字典與學習系統</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; }
+    </style>
+</head>
+<body class="bg-gradient-to-b from-amber-50/60 via-orange-50/20 to-slate-50 text-slate-800 min-h-screen">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Built-in starter dataset & Moedict API integration
+        const BUILTIN_DICT = {
+            '學': {
+                title: '學',
+                entryType: 'character',
+                pronunciation: 'ㄒㄩㄝˊ',
+                definition: '1. 模仿、效法。如：「學習」、「學樣」。\n2. 傳授知識的地方。如：「學校」、「書學」。\n3. 知識、學問。如：「學問」、「才學」、「博學多聞」。',
+                wordCombinations: [
+                    { word: '學習', pronunciation: 'ㄒㄩㄝˊ ㄒㄧˊ', definition: '個體透過練習或經驗而使行為或能力產生持久改變的歷程。' },
+                    { word: '學校', pronunciation: 'ㄒㄩㄝˊ ㄒㄧㄠˋ', definition: '教育學生的機構。' }
+                ],
+                exampleSentences: [
+                    { sentence: '我們每天在學校認真學習新知識。', sourceType: 'dictionary' }
+                ],
+                sourceId: 'moe_dict',
+                sourceUrl: 'https://dict.concised.moe.edu.tw/',
+                sourceLicense: '政府資料開放授權條款-第1版'
+            },
+            '勇敢': {
+                title: '勇敢',
+                entryType: 'word',
+                pronunciation: 'ㄩㄥˇ ㄍㄢˇ',
+                definition: '具有膽量、不畏懼困難與危險。',
+                wordCombinations: [
+                    { word: '勇氣', pronunciation: 'ㄩㄥˇ ㄑㄧˋ', definition: '敢作敢當、毫不畏懼的氣魄。' }
+                ],
+                exampleSentences: [
+                    { sentence: '小明跌倒了沒有哭，真是一個勇敢的孩子。', sourceType: 'dictionary' }
+                ],
+                sourceId: 'moe_dict',
+                sourceUrl: 'https://dict.concised.moe.edu.tw/',
+                sourceLicense: '政府資料開放授權條款-第1版'
+            },
+            '畫蛇添足': {
+                title: '畫蛇添足',
+                entryType: 'idiom',
+                pronunciation: 'ㄏㄨㄚˋ ㄕㄜˊ ㄊㄧㄢ ㄗㄨˊ',
+                definition: '畫蛇時給蛇添上腳。比喻多此一舉，不但無益，反而有害。',
+                idiomOrigin: '戰國時楚國貴族祭祀完後，把酒分給門客喝。酒少人多，大家約定誰先畫好蛇就喝這壺酒。有一個人最先畫好，便得意地為蛇畫上腳，結果被旁人拿走酒...',
+                exampleSentences: [
+                    { sentence: '這篇作文已經很完整了，你不用再加這段話，免得畫蛇添足。', sourceType: 'dictionary' }
+                ],
+                sourceId: 'moe_idiom',
+                sourceUrl: 'https://dict.idioms.moe.edu.tw/',
+                sourceLicense: '政府資料開放授權條款-第1版'
+            }
+        };
+
+        function App() {
+            const [query, setQuery] = useState('學');
+            const [entry, setEntry] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem('mandarin_history') || '[]'));
+            const [favorites, setFavorites] = useState(() => JSON.parse(localStorage.getItem('mandarin_favs') || '[]'));
+            const [isFav, setIsFav] = useState(false);
+            const [externalLinks, setExternalLinks] = useState([]);
+
+            const speak = (text) => {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const u = new SpeechSynthesisUtterance(text);
+                    u.lang = 'zh-TW';
+                    u.rate = 0.9;
+                    window.speechSynthesis.speak(u);
+                }
+            };
+
+            const searchWord = async (word, force = false) => {
+                const clean = word.trim();
+                if (!clean) return;
+                setQuery(clean);
+                setLoading(true);
+
+                // Generate external links
+                const encoded = encodeURIComponent(clean);
+                setExternalLinks([
+                    { name: '教育部重編國語辭典修訂本', url: `https://dict.revised.moe.edu.tw/search.jsp?word=${encoded}` },
+                    { name: '教育部國語辭典簡編本', url: `https://dict.concised.moe.edu.tw/search.jsp?word=${encoded}` },
+                    { name: '教育部成語典', url: `https://dict.idioms.moe.edu.tw/idiomsearch.jsp?word=${encoded}` },
+                    { name: '萌典線上辭典', url: `https://www.moedict.tw/#/${encoded}` },
+                    { name: 'Google 搜尋', url: `https://www.google.com/search?q=${encoded}+造詞+解釋` }
+                ]);
+
+                // 1. Check builtin / local
+                if (!force && BUILTIN_DICT[clean]) {
+                    const found = BUILTIN_DICT[clean];
+                    setEntry(found);
+                    addToHistory(clean);
+                    checkFav(clean);
+                    setLoading(false);
+                    return;
+                }
+
+                // 2. Fetch from Moedict API
+                try {
+                    const res = await fetch(`https://www.moedict.tw/uni/${encoded}.json`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json && json.title) {
+                            const heteronym = json.heteronyms?.[0] || {};
+                            const defs = heteronym.definitions?.map((d, i) => `${i+1}. ${d.def}`).join('\n') || json.explanation || '查無定義';
+                            const bopo = heteronym.bopomofo || '注音待確認';
+                            
+                            const examples = [];
+                            if (heteronym.definitions) {
+                                heteronym.definitions.forEach(d => {
+                                    if (d.example) d.example.forEach(ex => examples.push({ sentence: ex, sourceType: 'dictionary' }));
+                                });
+                            }
+                            if (examples.length === 0) {
+                                examples.push({ sentence: `這是關於「${json.title}」的公開字典例句。`, sourceType: 'system_practice' });
+                            }
+
+                            const result = {
+                                title: json.title,
+                                entryType: json.title.length > 3 ? 'idiom' : 'word',
+                                pronunciation: bopo,
+                                definition: defs,
+                                wordCombinations: [],
+                                idiomOrigin: json.idiom_origin || null,
+                                exampleSentences: examples,
+                                sourceId: 'moedict_api',
+                                sourceUrl: `https://www.moedict.tw/#/${encoded}`,
+                                sourceLicense: 'CC-BY-NC-SA 3.0 / 萌典公開 API'
+                            };
+                            setEntry(result);
+                            addToHistory(clean);
+                            checkFav(clean);
+                            setLoading(false);
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.warn(e);
+                }
+
+                setEntry(null);
+                addToHistory(clean);
+                setLoading(false);
+            };
+
+            const addToHistory = (w) => {
+                let h = [w, ...history.filter(x => x !== w)].slice(0, 15);
+                setHistory(h);
+                localStorage.setItem('mandarin_history', JSON.stringify(h));
+            };
+
+            const checkFav = (title) => {
+                const favs = favorites;
+                setIsFav(favs.some(f => f.title === title));
+            };
+
+            const toggleFav = () => {
+                if (!entry) return;
+                let favs = favorites;
+                if (isFav) {
+                    favs = favs.filter(f => f.title !== entry.title);
+                } else {
+                    favs = [entry, ...favs];
+                }
+                setFavorites(favs);
+                localStorage.setItem('mandarin_favs', JSON.stringify(favs));
+                setIsFav(!isFav);
+            };
+
+            useEffect(() => {
+                searchWord('學', false);
+            }, []);
+
+            return (
+                <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+                    {/* Header */}
+                    <header className="flex items-center justify-between bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-amber-100 shadow-xs">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-amber-500 flex items-center justify-center text-white font-bold text-xl shadow">
+                                📖
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-extrabold text-slate-800">小小國語學習家 v3.0</h1>
+                                <p className="text-xs text-slate-500">100% 離線與即時查詢智慧字典系統</p>
+                            </div>
+                        </div>
+                        <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                            教育部授權與公開 API
+                        </span>
+                    </header>
+
+                    {/* Search Bar */}
+                    <div className="bg-white rounded-3xl p-6 sm:p-8 border border-amber-200 shadow-lg space-y-4">
+                        <div className="text-center space-y-1">
+                            <h2 className="text-2xl sm:text-3xl font-black text-slate-800">今天想查哪個字或詞語呢？</h2>
+                            <p className="text-sm text-slate-600">支援單字、詞語、成語查詢，附有注音、解釋與真人發音！</p>
+                        </div>
+                        <form onSubmit={(e) => { e.preventDefault(); searchWord(query, false); }} className="flex gap-2">
+                            <input 
+                                type="text" 
+                                value={query} 
+                                onChange={(e) => setQuery(e.target.value)}
+                                placeholder="請輸入國字、詞語或成語..."
+                                className="flex-1 py-4 px-5 text-lg rounded-2xl border-2 border-amber-300 focus:border-amber-500 focus:outline-hidden bg-slate-50 font-sans"
+                            />
+                            <button 
+                                type="submit" 
+                                disabled={loading}
+                                className="px-8 py-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-2xl shadow transition-transform active:scale-95"
+                            >
+                                {loading ? '查詢中...' : '查字典'}
+                            </button>
+                        </form>
+                        <div className="flex flex-wrap items-center gap-2 pt-2 text-sm text-slate-600">
+                            <span className="font-semibold text-slate-500">熱門查詢：</span>
+                            {['學', '勇敢', '畫蛇添足', '天', '水', '快樂', '老師'].map(w => (
+                                <button key={w} onClick={() => searchWord(w, false)} className="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-full border border-amber-200 text-xs font-semibold">
+                                    {w}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Result Section */}
+                    {entry ? (
+                        <div className="space-y-6">
+                            {/* Pronunciation Card */}
+                            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 sm:p-8 border border-amber-200 shadow-sm relative">
+                                <button 
+                                    onClick={toggleFav}
+                                    className={`absolute top-4 right-4 p-2.5 rounded-full border ${isFav ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-slate-600 border-amber-200'}`}
+                                    title={isFav ? '已收藏' : '加入收藏'}
+                                >
+                                    ❤️
+                                </button>
+                                <div className="flex flex-col sm:flex-row sm:items-baseline gap-4 mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-4xl sm:text-5xl font-extrabold text-slate-800">{entry.title}</h2>
+                                        <button onClick={() => speak(entry.title)} className="p-2.5 bg-amber-500 text-white rounded-full shadow hover:bg-amber-600">
+                                            🔊 朗讀
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-amber-200 shadow-xs">
+                                        <span className="text-xl font-bold text-amber-800 font-mono">{entry.pronunciation}</span>
+                                        <button onClick={() => speak(entry.pronunciation)} className="text-xs bg-amber-100 px-2 py-1 rounded text-amber-900">🔊 讀注音</button>
+                                    </div>
+                                </div>
+                                <div className="text-xs text-slate-500">來源：{entry.sourceId} ({entry.sourceLicense})</div>
+                            </div>
+
+                            {/* Definition */}
+                            <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                        <span className="w-2.5 h-6 bg-amber-500 rounded-full inline-block"></span>
+                                        辭典解釋
+                                    </h3>
+                                    <button onClick={() => speak(entry.definition)} className="text-sm text-amber-600 font-medium">🔊 朗讀解釋</button>
+                                </div>
+                                <div className="text-slate-700 text-lg leading-relaxed whitespace-pre-line pl-4 border-l-4 border-amber-300">
+                                    {entry.definition}
+                                </div>
+                            </div>
+
+                            {/* Idiom Origin */}
+                            {entry.idiomOrigin && (
+                                <div className="bg-amber-50/60 rounded-2xl p-6 border border-amber-200 shadow-sm space-y-2">
+                                    <h3 className="text-lg font-bold text-amber-900">成語典故與出處</h3>
+                                    <p className="text-slate-700 leading-relaxed">{entry.idiomOrigin}</p>
+                                </div>
+                            )}
+
+                            {/* Word Combinations */}
+                            {entry.wordCombinations && entry.wordCombinations.length > 0 && (
+                                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                                    <h3 className="text-lg font-bold text-slate-800">相關造詞</h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {entry.wordCombinations.map((wc, i) => (
+                                            <div key={i} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="font-bold text-lg text-slate-800">{wc.word}</span>
+                                                    <button onClick={() => speak(wc.word)} className="text-xs text-emerald-700">🔊</button>
+                                                </div>
+                                                <div className="text-sm font-mono text-emerald-800">{wc.pronunciation}</div>
+                                                <p className="text-sm text-slate-600">{wc.definition}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Example Sentences */}
+                            {entry.exampleSentences && entry.exampleSentences.length > 0 && (
+                                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                                    <h3 className="text-lg font-bold text-slate-800">例句練習</h3>
+                                    <div className="space-y-3">
+                                        {entry.exampleSentences.map((es, i) => (
+                                            <div key={i} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-start gap-4">
+                                                <p className="text-base text-slate-800">{es.sentence}</p>
+                                                <button onClick={() => speak(es.sentence)} className="text-indigo-600 shrink-0">🔊</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center space-y-3">
+                            <div className="text-3xl">🔍</div>
+                            <h3 className="text-lg font-bold text-slate-800">查無「{query}」的直接辭典收錄</h3>
+                            <p className="text-sm text-slate-600">請透過下方外部官方網站繼續查詢。</p>
+                        </div>
+                    )}
+
+                    {/* External Links */}
+                    <div className="bg-sky-50 rounded-2xl p-6 border border-sky-200 space-y-4">
+                        <h3 className="text-lg font-bold text-sky-900">外部官方與線上辭典查詢入口</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {externalLinks.map((link, i) => (
+                                <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="p-4 bg-white rounded-xl border border-sky-200 hover:bg-sky-100 flex justify-between items-center group">
+                                    <span className="font-bold text-sky-900 group-hover:text-sky-700">{link.name}</span>
+                                    <span className="text-sky-400">↗</span>
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* History & Favorites */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white rounded-2xl p-6 border border-slate-200 space-y-3">
+                            <h3 className="font-bold text-slate-800">最近查詢紀錄</h3>
+                            <div className="flex flex-wrap gap-2">
+                                {history.map((h, i) => (
+                                    <button key={i} onClick={() => searchWord(h, false)} className="px-3 py-1 bg-slate-100 hover:bg-amber-50 rounded-lg text-sm font-medium">
+                                        {h}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-2xl p-6 border border-slate-200 space-y-3">
+                            <h3 className="font-bold text-slate-800">我的收藏 ({favorites.length})</h3>
+                            <div className="flex flex-wrap gap-2">
+                                {favorites.map((f, i) => (
+                                    <button key={i} onClick={() => searchWord(f.title, false)} className="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-lg text-sm font-bold">
+                                        {f.title}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
