@@ -20,6 +20,8 @@ const nextConfig: NextConfig = {
     ],
   },
   output: 'export',
+  basePath: '/k6c',
+  assetPrefix: '/k6c/',
   transpilePackages: ['motion'],
   webpack: (config, {dev}) => {
     if (dev && process.env.DISABLE_HMR === 'true') {
