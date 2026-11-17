@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useSyncExternalStore } from 'react';
+import React, { useState, useCallback } from 'react';
 import { SearchBar } from '@/components/SearchBar';
 import { PronunciationCard } from '@/components/PronunciationCard';
 import { ResultCard } from '@/components/ResultCard';
@@ -54,45 +54,45 @@ export default function Home() {
   });
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [history, setHistory] = useState<string[]>(() => (typeof window !== 'undefined' ? CacheEngine.getHistory() : []));
+  const [favorites, setFavorites] = useState<KnowledgeEntry[]>(() => (typeof window !== 'undefined' ? CacheEngine.getFavorites() : []));
+  const [isFav, setIsFav] = useState<boolean>(() => (typeof window !== 'undefined' ? CacheEngine.isFavorite('學') : false));
   const [refreshComparisonData, setRefreshComparisonData] = useState<{ oldEntry?: KnowledgeEntry; newEntry?: KnowledgeEntry } | null>(null);
-
-  const history = useSyncExternalStore(
-    () => () => {},
-    () => CacheEngine.getHistory(),
-    () => []
-  );
-
-  const favorites = useSyncExternalStore(
-    () => () => {},
-    () => CacheEngine.getFavorites(),
-    () => []
-  );
-
-  const isFav = searchResult?.entry ? CacheEngine.isFavorite(searchResult.entry.normalizedQuery) : false;
 
   const handleSearch = useCallback(async (query: string, forceRefresh: boolean) => {
     setIsLoading(true);
     setRefreshComparisonData(null);
-    const oldEntry = searchResult?.entry;
+    let oldEntry: KnowledgeEntry | undefined;
+    setSearchResult((prev) => {
+      oldEntry = prev?.entry;
+      return prev;
+    });
 
     const res = await SearchEngine.search(query, forceRefresh);
     setSearchResult(res);
+    setHistory(CacheEngine.getHistory());
+    setFavorites(CacheEngine.getFavorites());
 
-    if (forceRefresh && res.entry) {
-      setRefreshComparisonData({
-        oldEntry,
-        newEntry: res.entry,
-      });
+    if (res.entry) {
+      setIsFav(CacheEngine.isFavorite(res.entry.normalizedQuery));
+      if (forceRefresh) {
+        setRefreshComparisonData({
+          oldEntry,
+          newEntry: res.entry,
+        });
+      }
+    } else {
+      setIsFav(false);
     }
 
     setIsLoading(false);
-  }, [searchResult?.entry]);
+  }, []);
 
   const handleToggleFavorite = () => {
     if (!searchResult?.entry) return;
-    CacheEngine.toggleFavorite(searchResult.entry);
-    // Force re-render by updating searchResult slightly or triggering state
-    setSearchResult({ ...searchResult });
+    const added = CacheEngine.toggleFavorite(searchResult.entry);
+    setIsFav(added);
+    setFavorites(CacheEngine.getFavorites());
   };
 
   return (
@@ -197,6 +197,7 @@ export default function Home() {
               message: '從收藏載入',
               timestamp: new Date().toISOString(),
             });
+            setIsFav(true);
           }}
         />
       </main>
