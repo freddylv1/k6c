@@ -52,6 +52,38 @@ const workerHandler = {
         return Response.json({ found: false, message: 'Not found in D1 shared database' }, { headers: corsHeaders });
       }
 
+      // Proxy endpoint for Ministry of Education Idiom Dictionary (Bypasses CORS & X-Frame-Options)
+      if (path === '/api/proxy/idiom' && request.method === 'GET') {
+        const word = url.searchParams.get('word') || url.searchParams.get('idiom') || '學';
+        const targetUrl = `https://dict.idioms.moe.edu.tw/idiomList.jsp?idiom=${encodeURIComponent(word)}&pSize=50&tp=10&sort=0`;
+
+        const upstreamRes = await fetch(targetUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+          },
+        });
+
+        let html = await upstreamRes.text();
+
+        // Inject <base href="..."> right after <head> to fix relative stylesheet/script paths
+        if (html.includes('<head>')) {
+          html = html.replace('<head>', '<head><base href="https://dict.idioms.moe.edu.tw/">');
+        } else if (html.includes('<HEAD>')) {
+          html = html.replace('<HEAD>', '<HEAD><base href="https://dict.idioms.moe.edu.tw/">');
+        }
+
+        const responseHeaders = new Headers();
+        responseHeaders.set('Content-Type', 'text/html; charset=utf-8');
+        responseHeaders.set('Access-Control-Allow-Origin', '*');
+        responseHeaders.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+
+        return new Response(html, {
+          status: 200,
+          headers: responseHeaders,
+        });
+      }
+
       return Response.json({ error: 'Not Found' }, { status: 404, headers: corsHeaders });
     } catch (err: any) {
       return Response.json({ error: err.message }, { status: 500, headers: corsHeaders });

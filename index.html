@@ -11,8 +11,6 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
         body { font-family: 'Noto Sans TC', sans-serif; }
@@ -24,7 +22,7 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // Built-in starter dataset & Moedict API integration
+        // Rich Built-in Elementary Dictionary Dataset
         const BUILTIN_DICT = {
             '學': {
                 title: '學',
@@ -37,6 +35,68 @@
                 ],
                 exampleSentences: [
                     { sentence: '我們每天在學校認真學習新知識。', sourceType: 'dictionary' }
+                ],
+                sourceId: 'moe_dict',
+                sourceUrl: 'https://dict.concised.moe.edu.tw/',
+                sourceLicense: '政府資料開放授權條款-第1版'
+            },
+            '天': {
+                title: '天',
+                entryType: 'character',
+                pronunciation: 'ㄊㄧㄢ',
+                definition: '1. 日月星辰所羅列的空間，即天空。如：「碧海青天」、「頂天立地」。\n2. 一晝夜的時間。如：「昨天」、「今天」、「三天三夜」。\n3. 時節、季節。如：「春天」、「三伏天」。\n4. 氣候。如：「晴天」、「下雨天」。',
+                wordCombinations: [
+                    { word:空, pronunciation: 'ㄊㄧㄢ ㄎㄨㄥ', definition: '地球周圍的大氣層或太空。' },
+                    { word: '天天', pronunciation: 'ㄊㄧㄢ ㄊㄧㄢ', definition: '每一天、經常。' }
+                ],
+                exampleSentences: [
+                    { sentence: '今天的天氣非常好，適合到戶外郊遊。', sourceType: 'dictionary' }
+                ],
+                sourceId: 'moe_dict',
+                sourceUrl: 'https://dict.concised.moe.edu.tw/',
+                sourceLicense: '政府資料開放授權條款-第1版'
+            },
+            '水': {
+                title: '水',
+                entryType: 'character',
+                pronunciation: 'ㄕㄨㄟˇ',
+                definition: '1. 一種無色、無臭、無味的透明液體，是生命賴以生存的重要物質。如：「河水」、「飲用水」。\n2. 江河湖海的統稱。如：「水路」、「翻山越嶺」。',
+                wordCombinations: [
+                    { word: '水果', pronunciation: 'ㄕㄨㄟˇ ㄍㄨㄛˇ', definition: '可食用的多汁植物果實。' },
+                    { word: '水分', pronunciation: 'ㄕㄨㄟˇ ㄈㄣ', definition: '含在物體中的水分。' }
+                ],
+                exampleSentences: [
+                    { sentence: '每天多喝水對身體健康很有幫助。', sourceType: 'dictionary' }
+                ],
+                sourceId: 'moe_dict',
+                sourceUrl: 'https://dict.concised.moe.edu.tw/',
+                sourceLicense: '政府資料開放授權條款-第1版'
+            },
+            '快樂': {
+                title: '快樂',
+                entryType: 'word',
+                pronunciation: 'ㄎㄨㄞˋ ㄌㄜˋ',
+                definition: '心中感到歡喜、舒暢。',
+                wordCombinations: [
+                    { word: '快快樂樂', pronunciation: 'ㄎㄨㄞˋ ㄎㄨㄞˋ ㄌㄜˋ ㄌㄜˋ', definition: '形容心情非常愉快高興。' }
+                ],
+                exampleSentences: [
+                    { sentence: '祝你生日快樂！小朋友在公園裡快樂地玩耍。', sourceType: 'dictionary' }
+                ],
+                sourceId: 'moe_dict',
+                sourceUrl: 'https://dict.concised.moe.edu.tw/',
+                sourceLicense: '政府資料開放授權條款-第1版'
+            },
+            '老師': {
+                title: '老師',
+                entryType: 'word',
+                pronunciation: 'ㄌㄠˇ ㄕ',
+                definition: '傳授學問與技藝的人。',
+                wordCombinations: [
+                    { word: '師生', pronunciation: 'ㄕ ㄕㄥ', definition: '老師與學生。' }
+                ],
+                exampleSentences: [
+                    { sentence: '老師用心教導我們讀書寫字。', sourceType: 'dictionary' }
                 ],
                 sourceId: 'moe_dict',
                 sourceUrl: 'https://dict.concised.moe.edu.tw/',
@@ -97,7 +157,6 @@
                 setQuery(clean);
                 setLoading(true);
 
-                // Generate external links
                 const encoded = encodeURIComponent(clean);
                 setExternalLinks([
                     { name: '教育部重編國語辭典修訂本', url: `https://dict.revised.moe.edu.tw/search.jsp?word=${encoded}` },
@@ -107,7 +166,7 @@
                     { name: 'Google 搜尋', url: `https://www.google.com/search?q=${encoded}+造詞+解釋` }
                 ]);
 
-                // 1. Check builtin / local
+                // 1. Check builtin dictionary first for instant response
                 if (!force && BUILTIN_DICT[clean]) {
                     const found = BUILTIN_DICT[clean];
                     setEntry(found);
@@ -146,7 +205,7 @@
                                 idiomOrigin: json.idiom_origin || null,
                                 exampleSentences: examples,
                                 sourceId: 'moedict_api',
-                                sourceUrl: `https://www.moedict.tw/#/${encoded}`,
+                                sourceUrl: `https://www.moedict.tw/${encoded}`,
                                 sourceLicense: 'CC-BY-NC-SA 3.0 / 萌典公開 API'
                             };
                             setEntry(result);
@@ -203,7 +262,7 @@
                             </div>
                             <div>
                                 <h1 className="text-xl font-extrabold text-slate-800">小小國語學習家 v3.0</h1>
-                                <p className="text-xs text-slate-500">100% 離線與即時查詢智慧字典系統</p>
+                                <p className="text-xs text-slate-500">專為國小學生設計的智慧字典與離線查詢系統</p>
                             </div>
                         </div>
                         <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
@@ -215,7 +274,7 @@
                     <div className="bg-white rounded-3xl p-6 sm:p-8 border border-amber-200 shadow-lg space-y-4">
                         <div className="text-center space-y-1">
                             <h2 className="text-2xl sm:text-3xl font-black text-slate-800">今天想查哪個字或詞語呢？</h2>
-                            <p className="text-sm text-slate-600">支援單字、詞語、成語查詢，附有注音、解釋與真人發音！</p>
+                            <p className="text-sm text-slate-600">支援單字、詞語、成語查詢，附有注音、解釋、造詞與真人發音！</p>
                         </div>
                         <form onSubmit={(e) => { e.preventDefault(); searchWord(query, false); }} className="flex gap-2">
                             <input 
@@ -235,7 +294,7 @@
                         </form>
                         <div className="flex flex-wrap items-center gap-2 pt-2 text-sm text-slate-600">
                             <span className="font-semibold text-slate-500">熱門查詢：</span>
-                            {['學', '勇敢', '畫蛇添足', '天', '水', '快樂', '老師'].map(w => (
+                            {['學', '天', '水', '快樂', '老師', '勇敢', '畫蛇添足'].map(w => (
                                 <button key={w} onClick={() => searchWord(w, false)} className="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-full border border-amber-200 text-xs font-semibold">
                                     {w}
                                 </button>
